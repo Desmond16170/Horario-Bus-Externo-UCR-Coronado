@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bus UCR ↔ Coronado</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #1c2333;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+    --text: #e6edf3; --muted: #8b949e; --accent: #f0a500; --accent2: #e6534a;
+    --green: #3fb950; --blue: #58a6ff; --wa: #25D366; --purple: #a371f7;
+    --orange: #f0a500; --red: #e6534a;
+    --pill-bg: rgba(240,165,0,0.12);
+    --font: 'Space Grotesk', sans-serif; --display: 'Syne', sans-serif;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; font-size: 15px; line-height: 1.5; }
+
+  .header { border-bottom: 1px solid var(--border); padding: .85rem 1.25rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg); z-index: 100; }
+  .logo { font-family: var(--display); font-size: 1.1rem; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 7px; }
+  .logo-dot { color: var(--accent); }
+  .nav-tabs { display: flex; gap: 3px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+  .tab-btn { background: none; border: none; color: var(--muted); padding: 5px 10px; border-radius: 7px; cursor: pointer; font-size: 12px; font-family: var(--font); font-weight: 500; transition: all .15s; white-space: nowrap; }
+  .tab-btn.active { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+  .live-badge { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--green); font-weight: 500; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)} }
+
+  .view { display: none; padding: 1.25rem; max-width: 700px; margin: 0 auto; }
+  .view.active { display: block; }
+
+  /* NOTIFICACIONES */
+  .notif-banner { border-radius: 12px; padding: 12px 14px; margin-bottom: 1rem; display: none; position: relative; }
+  .notif-banner.visible { display: flex; align-items: flex-start; gap: 10px; }
+  .notif-banner.type-warning { background: rgba(240,165,0,.1); border: 1px solid rgba(240,165,0,.25); }
+  .notif-banner.type-alert   { background: rgba(230,83,74,.1);  border: 1px solid rgba(230,83,74,.25); }
+  .notif-banner.type-info    { background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.25); }
+  .notif-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .notif-body { flex: 1; min-width: 0; }
+  .notif-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .notif-banner.type-warning .notif-title { color: var(--accent); }
+  .notif-banner.type-alert   .notif-title { color: var(--accent2); }
+  .notif-banner.type-info    .notif-title { color: var(--blue); }
+  .notif-msg { font-size: 12px; color: var(--muted); }
+  .notif-exp { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .notif-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0; line-height: 1; flex-shrink: 0; transition: color .15s; }
+  .notif-close:hover { color: var(--text); }
+
+  /* CLOCK */
+  .clock-section { text-align: center; padding: 1.5rem 0 1.25rem; }
+  .clock { font-family: var(--display); font-size: 3rem; font-weight: 800; letter-spacing: -0.03em; }
+  .clock-date { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  /* GPS */
+  .gps-banner { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; margin-bottom: 1rem; cursor: pointer; transition: border-color .15s; }
+  .gps-banner:hover { border-color: var(--purple); }
+  .gps-icon { font-size: 18px; flex-shrink: 0; }
+  .gps-text { flex: 1; min-width: 0; }
+  .gps-title { font-size: 13px; font-weight: 600; }
+  .gps-sub { font-size: 11px; color: var(--muted); }
+  .gps-btn { background: rgba(163,113,247,.12); border: 1px solid rgba(163,113,247,.25); color: var(--purple); border-radius: 7px; padding: 4px 10px; font-size: 11px; font-family: var(--font); cursor: pointer; font-weight: 600; white-space: nowrap; transition: all .15s; flex-shrink: 0; }
+  .gps-btn:hover { background: rgba(163,113,247,.22); }
+  .nearest-stop-card { background: rgba(163,113,247,.08); border: 1px solid rgba(163,113,247,.2); border-radius: 12px; padding: 10px 14px; margin-bottom: 1rem; display: none; }
+  .nearest-stop-card.visible { display: block; }
+  .nearest-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--purple); font-weight: 600; margin-bottom: 4px; }
+  .nearest-name { font-size: 15px; font-weight: 600; }
+  .nearest-dist { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* NEXT BUS */
+  .next-bus-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.35rem; margin-bottom: 1.25rem; position: relative; overflow: hidden; }
+  .next-bus-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .next-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 6px; }
+  .next-time { font-family: var(--display); font-size: 2.4rem; font-weight: 800; color: var(--accent); letter-spacing: -0.02em; }
+  .next-info { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .countdown { background: var(--pill-bg); border: 1px solid rgba(240,165,0,0.2); border-radius: 8px; padding: 7px 13px; display: inline-block; margin-top: 10px; font-weight: 600; color: var(--accent); font-size: 14px; }
+  .no-bus { color: var(--muted); font-size: 14px; padding: .75rem 0; }
+
+  /* BUS PROGRESS */
+  .bus-progress-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .bus-progress-card.visible { display: block; }
+  .bus-progress-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
+  .bus-progress-title { font-size: 13px; font-weight: 600; }
+  .bus-progress-badge {
+    font-size: 10px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-weight: 700;
+    border: 1px solid transparent;
+  }
+  .bus-progress-badge.estimated { background: rgba(240,165,0,.12); color: var(--accent); border-color: rgba(240,165,0,.22); }
+  .bus-progress-badge.real { background: rgba(63,185,80,.12); color: var(--green); border-color: rgba(63,185,80,.22); }
+  .bus-progress-sub { font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  .bus-progress-sub strong { color: var(--text); }
+  .bus-progress-track-wrap { margin-top: 12px; }
+  .bus-progress-labels { display:flex; justify-content:space-between; gap:16px; font-size:11px; color:var(--muted); margin-bottom:6px; }
+  .bus-progress-labels strong { color: var(--text); font-size: 12px; display:block; }
+  .bus-progress-labels .right { text-align:right; }
+  .bus-progress-track {
+    position: relative;
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 999px;
+    overflow: visible;
+  }
+  .bus-progress-fill {
+    position:absolute;
+    inset:0 auto 0 0;
+    width:0%;
+    background: linear-gradient(90deg, var(--accent), #f3c55a);
+    border-radius: 999px;
+    transition: width .35s ease;
+  }
+  .bus-progress-dot {
+    position:absolute;
+    top:50%;
+    left:0%;
+    width:16px;
+    height:16px;
+    border-radius:50%;
+    background: var(--accent);
+    border: 3px solid rgba(13,17,23,.9);
+    box-shadow: 0 0 0 4px rgba(240,165,0,.15), 0 0 14px rgba(240,165,0,.35);
+    transform: translate(-50%, -50%);
+    transition: left .35s ease;
+  }
+  .bus-progress-end {
+    position:absolute;
+    top:50%;
+    right:-1px;
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    background: var(--bg);
+    border: 2px solid var(--border2);
+    transform: translateY(-50%);
+  }
+  .bus-progress-footer { font-size: 10px; color: var(--muted); margin-top: 8px; }
+
+  /* ROUTE */
+  .route-selector { display: flex; gap: 8px; margin-bottom: 1.25rem; }
+  .route-btn { flex: 1; padding: 9px 6px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s; text-align: center; }
+  .route-btn.active { border-color: var(--accent); color: var(--accent); background: var(--pill-bg); }
+
+  /* STOPS */
+  .stops-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 1.25rem; }
+  .stop-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); gap: 8px; transition: background .1s; }
+  .stop-row:last-child { border-bottom: none; }
+  .stop-row.nearest-highlight { background: rgba(163,113,247,.07); }
+  .stop-row.bus-here { background: rgba(240,165,0,.05); }
+  .stop-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+  .stop-circle { width: 26px; height: 26px; border-radius: 50%; background: var(--surface2); border: 2px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: var(--muted); flex-shrink: 0; transition: all .2s; }
+  .stop-circle.passed  { background: rgba(63,185,80,.15);   border-color: var(--green);  color: var(--green); }
+  .stop-circle.nearest { background: rgba(163,113,247,.15); border-color: var(--purple); color: var(--purple); }
+  .stop-circle.bus-est { background: rgba(240,165,0,.15);   border-color: var(--accent); color: var(--accent); animation: busping 1.5s infinite; }
+  .stop-circle.bus-real{ background: rgba(63,185,80,.25);   border-color: var(--green);  color: var(--green); animation: busping 1.5s infinite; }
+  @keyframes busping { 0%,100%{box-shadow:0 0 0 0 rgba(240,165,0,.4)} 50%{box-shadow:0 0 0 6px rgba(240,165,0,0)} }
+  .stop-info { min-width: 0; }
+  .stop-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stop-tags { display: flex; gap: 4px; margin-top: 2px; flex-wrap: wrap; align-items: center; }
+  .stop-eta { font-size: 11px; color: var(--muted); }
+  .stop-nearest-badge { font-size: 9px; background: rgba(163,113,247,.15); color: var(--purple); border-radius: 4px; padding: 1px 5px; font-weight: 600; }
+  .stop-bus-badge-est  { font-size: 9px; background: rgba(240,165,0,.15);   color: var(--accent); border-radius: 4px; padding: 1px 5px; font-weight: 600; }
+  .stop-bus-badge-real { font-size: 9px; background: rgba(63,185,80,.15);    color: var(--green);  border-radius: 4px; padding: 1px 5px; font-weight: 600; }
+  .report-btn { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); border-radius: 7px; padding: 4px 10px; font-size: 11px; font-family: var(--font); cursor: pointer; font-weight: 500; transition: all .15s; white-space: nowrap; flex-shrink: 0; }
+  .report-btn:hover { background: rgba(63,185,80,0.1); border-color: var(--green); color: var(--green); }
+  .report-btn.passed-lbl { background: rgba(63,185,80,0.1); border-color: var(--green); color: var(--green); cursor: default; }
+
+  /* SCHEDULE */
+  .schedule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.25rem; }
+  .sched-col { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .sched-col-header { padding: 9px 13px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+  .direction-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .sched-entry { padding: 7px 13px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .sched-entry:last-child { border-bottom: none; }
+  .sched-entry.past { opacity: .4; }
+  .sched-entry.next-dep { background: var(--pill-bg); }
+  .sched-time { font-size: 13px; font-weight: 600; }
+  .sched-badge { font-size: 9px; padding: 2px 6px; border-radius: 5px; font-weight: 600; }
+  .badge-next { background: rgba(240,165,0,.15); color: var(--accent); }
+  .badge-past { background: var(--surface2); color: var(--muted); }
+
+  /* WA */
+  .wa-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 10px; }
+  .wa-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); gap: 10px; }
+  .wa-item:last-child { border-bottom: none; }
+  .wa-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .wa-icon { width: 34px; height: 34px; border-radius: 10px; background: rgba(37,211,102,0.12); border: 1px solid rgba(37,211,102,0.2); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .wa-name { font-size: 13px; font-weight: 500; }
+  .wa-desc { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .wa-join { background: rgba(37,211,102,0.12); border: 1px solid rgba(37,211,102,0.25); color: var(--wa); border-radius: 8px; padding: 5px 12px; font-size: 12px; font-family: var(--font); cursor: pointer; font-weight: 600; transition: all .15s; white-space: nowrap; text-decoration: none; display: inline-block; }
+  .wa-join:hover { background: rgba(37,211,102,0.22); }
+  .wa-empty { padding: 2rem; text-align: center; color: var(--muted); font-size: 13px; }
+
+  /* ADMIN */
+  .admin-section { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.15rem; margin-bottom: 1.25rem; }
+  .admin-title { font-size: 13px; font-weight: 600; margin-bottom: .9rem; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .admin-badge { font-size: 10px; padding: 2px 7px; border-radius: 5px; font-weight: 600; background: rgba(88,166,255,.12); color: var(--blue); }
+  .form-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 110px; }
+  label { font-size: 10px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+  input[type="time"], input[type="text"], input[type="password"], input[type="url"], input[type="datetime-local"], select, textarea {
+    background: var(--bg); border: 1px solid var(--border2); border-radius: 8px; color: var(--text);
+    padding: 7px 10px; font-family: var(--font); font-size: 13px; outline: none; transition: border-color .15s; width: 100%;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  select option { background: var(--surface2); }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  .btn-primary { background: var(--accent); color: #000; border: none; border-radius: 8px; padding: 7px 14px; font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity .15s; white-space: nowrap; }
+  .btn-primary:hover { opacity: .85; }
+  .btn-save { background: var(--accent); color: #000; border: none; border-radius: 8px; padding: 11px; font-family: var(--font); font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; width: 100%; margin-bottom: 1rem; }
+  .btn-save:hover { opacity: .85; }
+  .btn-danger { background: rgba(230,83,74,.15); color: var(--accent2); border: 1px solid rgba(230,83,74,.2); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-family: var(--font); cursor: pointer; font-weight: 500; transition: all .15s; }
+  .btn-danger:hover { background: rgba(230,83,74,.25); }
+  .time-list { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .time-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 3px 9px; font-size: 12px; display: flex; align-items: center; gap: 5px; color: var(--text); }
+  .time-chip button { background: none; border: none; color: var(--accent2); cursor: pointer; font-size: 13px; padding: 0; line-height: 1; }
+  .stop-admin-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .stop-admin-row:last-child { border-bottom: none; }
+  .stop-admin-num { width: 20px; height: 20px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--muted); font-weight: 600; flex-shrink: 0; }
+  .stop-admin-name { flex: 1; font-size: 12px; }
+  .stop-time-offset { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .wa-admin-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .wa-admin-row:last-child { border-bottom: none; }
+  .wa-admin-name { flex: 1; font-size: 13px; font-weight: 500; }
+  .wa-admin-link { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+  .notif-admin-row { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .notif-admin-row:last-child { border-bottom: none; }
+  .notif-admin-body { flex: 1; min-width: 0; }
+  .notif-admin-title { font-size: 13px; font-weight: 500; }
+  .notif-admin-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .alert { padding: 9px 13px; border-radius: 10px; font-size: 13px; margin-bottom: 10px; }
+  .alert-success { background: rgba(63,185,80,.1); border: 1px solid rgba(63,185,80,.2); color: var(--green); }
+  .alert-info { background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.2); color: var(--blue); }
+  .alert-error { background: rgba(230,83,74,.1); border: 1px solid rgba(230,83,74,.2); color: var(--accent2); }
+
+  .report-history { margin-top: .25rem; }
+  .report-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; gap: 8px; }
+  .report-item:last-child { border-bottom: none; }
+  .ri-stop { font-weight: 500; font-size: 13px; }
+  .ri-sub { color: var(--muted); font-size: 11px; }
+
+  .section-title { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+  .page-title { font-family: var(--display); font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; margin-bottom: 4px; }
+  .page-sub { color: var(--muted); font-size: 13px; margin-bottom: 1.25rem; }
+  .lock-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; gap: 1rem; text-align: center; }
+  .lock-icon { font-size: 2.5rem; }
+  .lock-title { font-family: var(--display); font-size: 1.4rem; font-weight: 800; }
+  .lock-sub { color: var(--muted); font-size: 13px; }
+  .lock-form { display: flex; gap: 8px; width: 100%; max-width: 300px; }
+  .connecting { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; padding: .75rem 0; }
+  .spin { width: 15px; height: 15px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg); border-top: 1px solid var(--border); padding: 6px; gap: 3px; z-index: 200; }
+  .mobile-nav .tab-btn { flex: 1; text-align: center; padding: 7px 2px; font-size: 10px; }
+  @media (max-width: 520px) {
+    .schedule-grid { grid-template-columns: 1fr; }
+    .clock { font-size: 2.6rem; }
+    .next-time { font-size: 2rem; }
+    .nav-tabs { display: none; }
+    .mobile-nav { display: flex; }
+    .view { padding-bottom: 5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo" id="logo-easter-egg" title="Bus UCR Coronado">🚌<span>UCR<span class="logo-dot">·</span>Coronado</span></div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="showView('home')">Inicio</button>
+    <button class="tab-btn" onclick="showView('horarios')">Horarios</button>
+    <button class="tab-btn" onclick="showView('grupos')">Grupos</button>
+    <button class="tab-btn" data-admin-entry style="display:none;" onclick="showView('admin')">Admin</button>
+  </div>
+  <div class="live-badge"><div class="live-dot"></div><span id="live-time">--:--</span></div>
+</div>
+
+<!-- HOME -->
+<div class="view active" id="view-home">
+  <!-- Notificación del admin -->
+  <div class="notif-banner" id="notif-banner">
+    <div class="notif-icon" id="notif-icon">⚠️</div>
+    <div class="notif-body">
+      <div class="notif-title" id="notif-title"></div>
+      <div class="notif-msg"   id="notif-msg"></div>
+      <div class="notif-exp"   id="notif-exp"></div>
+    </div>
+    <button class="notif-close" onclick="dismissNotif()">×</button>
+  </div>
+
+  <div class="clock-section">
+    <div class="clock" id="big-clock">--:--:--</div>
+    <div class="clock-date" id="clock-date"></div>
+  </div>
+
+  <div class="gps-banner" onclick="requestGPS()">
+    <div class="gps-icon">📍</div>
+    <div class="gps-text">
+      <div class="gps-title" id="gps-title">Detectar mi parada más cercana</div>
+      <div class="gps-sub"   id="gps-sub">Usamos tu ubicación solo para encontrar la parada más cercana</div>
+    </div>
+    <button class="gps-btn" id="gps-btn">Activar GPS</button>
+  </div>
+
+  <div class="nearest-stop-card" id="nearest-card">
+    <div class="nearest-label">📍 Tu parada más cercana</div>
+    <div class="nearest-name" id="nearest-name">—</div>
+    <div class="nearest-dist" id="nearest-dist"></div>
+  </div>
+
+  <div class="route-selector">
+    <button class="route-btn active" id="btn-ucr" onclick="setDirection('UCR-Coronado')">🎓 UCR → Coronado</button>
+    <button class="route-btn"        id="btn-cor" onclick="setDirection('Coronado-UCR')">🏘️ Coronado → UCR</button>
+  </div>
+
+  <div class="bus-progress-card" id="bus-progress-card"></div>
+
+  <div class="next-bus-card">
+    <div class="next-label">Próxima salida</div>
+    <div id="next-bus-content"><div class="connecting"><div class="spin"></div>Conectando con Firebase...</div></div>
+  </div>
+
+  <div class="section-title">Paradas de la ruta</div>
+  <div class="stops-card" id="stops-list"></div>
+  <div id="alert-area"></div>
+
+  <div class="section-title" style="margin-top:1.25rem;">Reportes en tiempo real</div>
+  <div class="admin-section" style="padding:.65rem 1rem;">
+    <div id="report-history-list" class="report-history">
+      <div class="connecting"><div class="spin"></div>Cargando reportes...</div>
+    </div>
+  </div>
+</div>
+
+<!-- HORARIOS -->
+<div class="view" id="view-horarios">
+  <div class="page-title">Horarios del día</div>
+  <div class="page-sub">Lunes a viernes</div>
+  <div class="schedule-grid">
+    <div class="sched-col">
+      <div class="sched-col-header"><div class="direction-dot" style="background:var(--accent)"></div>UCR → Coronado</div>
+      <div id="sched-list-ucr"><div class="connecting" style="padding:10px 13px;"><div class="spin"></div></div></div>
+    </div>
+    <div class="sched-col">
+      <div class="sched-col-header"><div class="direction-dot" style="background:var(--blue)"></div>Coronado → UCR</div>
+      <div id="sched-list-cor"><div class="connecting" style="padding:10px 13px;"><div class="spin"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- GRUPOS -->
+<div class="view" id="view-grupos">
+  <div class="page-title">Grupos de WhatsApp</div>
+  <div class="page-sub">Grupos de estudiantes de la ruta UCR–Coronado</div>
+  <div id="wa-list"><div class="connecting"><div class="spin"></div>Cargando grupos...</div></div>
+</div>
+
+<!-- ADMIN -->
+<div class="view" id="view-admin">
+  <div id="admin-lock">
+    <div class="lock-screen">
+      <div class="lock-icon">🔒</div>
+      <div class="lock-title">Área de administración</div>
+      <div class="lock-sub">Solo para operadores autorizados</div>
+      <div class="lock-form">
+        <input type="password" id="admin-pass" placeholder="Contraseña..." onkeydown="if(event.key==='Enter')checkPass()" />
+        <button class="btn-primary" onclick="checkPass()">Entrar</button>
+      </div>
+      <div id="pass-error"></div>
+    </div>
+  </div>
+  <div id="admin-panel" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem;">
+      <div><div class="page-title">Panel de Admin</div><div class="page-sub" style="margin-bottom:0;">Cambios visibles para todos en tiempo real</div></div>
+      <button class="btn-danger" onclick="lockAdmin()">Cerrar sesión</button>
+    </div>
+    <div id="admin-alert"></div>
+
+    <!-- NOTIFICACIONES -->
+    <div class="admin-section">
+      <div class="admin-title">Notificaciones <span class="admin-badge">AVISOS</span></div>
+      <div id="notif-admin-list"></div>
+      <div style="margin-top:12px;">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Título del aviso</label>
+            <input type="text" id="new-notif-title" placeholder="Ej: Bus de las 8:00 cancelado" />
+          </div>
+          <div class="form-group" style="max-width:140px;">
+            <label>Tipo</label>
+            <select id="new-notif-type">
+              <option value="warning">⚠️ Advertencia</option>
+              <option value="alert">🚨 Urgente</option>
+              <option value="info">ℹ️ Información</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Mensaje</label>
+            <textarea id="new-notif-msg" placeholder="Ej: El bus de las 8:00 UCR→Coronado no se dará hoy por mantenimiento."></textarea>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Expira el (fecha y hora)</label>
+            <input type="datetime-local" id="new-notif-exp" />
+          </div>
+          <div style="align-self:flex-end;">
+            <button class="btn-primary" onclick="addNotif()">Publicar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PARADAS -->
+    <div class="admin-section">
+      <div class="admin-title">Paradas <span class="admin-badge">RUTA</span></div>
+      <div id="stops-admin-list"></div>
+      <div style="margin-top:10px;" class="form-row">
+        <div class="form-group"><label>Nombre de parada</label><input type="text" id="new-stop-name" placeholder="Ej: Bar Biever" /></div>
+        <div class="form-group" style="max-width:110px;"><label>Min desde inicio</label><input type="text" id="new-stop-offset" placeholder="0" /></div>
+        <div class="form-group" style="max-width:140px;"><label>Latitud (opcional)</label><input type="text" id="new-stop-lat" placeholder="9.9361" /></div>
+        <div class="form-group" style="max-width:140px;"><label>Longitud (opcional)</label><input type="text" id="new-stop-lng" placeholder="-84.0511" /></div>
+        <div style="align-self:flex-end;"><button class="btn-primary" onclick="addStop()">+ Agregar</button></div>
+      </div>
+    </div>
+
+    <!-- HORARIOS -->
+    <div class="admin-section">
+      <div class="admin-title">Salidas UCR → Coronado</div>
+      <div class="form-row"><input type="time" id="new-time-ucr" style="max-width:155px;" /><button class="btn-primary" onclick="addTime('UCR-Coronado')">+ Agregar</button></div>
+      <div class="time-list" id="times-ucr"></div>
+    </div>
+    <div class="admin-section">
+      <div class="admin-title">Salidas Coronado → UCR</div>
+      <div class="form-row"><input type="time" id="new-time-cor" style="max-width:155px;" /><button class="btn-primary" onclick="addTime('Coronado-UCR')">+ Agregar</button></div>
+      <div class="time-list" id="times-cor"></div>
+    </div>
+
+    <!-- WA GRUPOS -->
+    <div class="admin-section">
+      <div class="admin-title">Grupos de WhatsApp <span class="admin-badge">LINKS</span></div>
+      <div id="wa-admin-list"></div>
+      <div style="margin-top:10px;">
+        <div class="form-row"><div class="form-group"><label>Nombre del grupo</label><input type="text" id="new-wa-name" placeholder="Ej: Bus 6:15 Coronado" /></div></div>
+        <div class="form-row"><div class="form-group"><label>Descripción (opcional)</label><input type="text" id="new-wa-desc" placeholder="Ej: Salida 6:15 am desde Coronado" /></div></div>
+        <div class="form-row">
+          <div class="form-group"><label>Link de WhatsApp</label><input type="url" id="new-wa-link" placeholder="https://chat.whatsapp.com/..." /></div>
+          <div style="align-self:flex-end;"><button class="btn-primary" onclick="addWaGroup()">+ Agregar</button></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-save" onclick="saveAdmin()">💾 Guardar todo en Firebase</button>
+    <div style="text-align:center;margin-bottom:1.5rem;"><button class="btn-danger" onclick="clearReports()">🗑️ Limpiar reportes del día</button></div>
+  </div>
+</div>
+
+<div class="mobile-nav">
+  <button class="tab-btn active" onclick="showView('home')">🏠 Inicio</button>
+  <button class="tab-btn" onclick="showView('horarios')">📋 Horarios</button>
+  <button class="tab-btn" onclick="showView('grupos')">💬 Grupos</button>
+  <button class="tab-btn" data-admin-entry style="display:none;" onclick="showView('admin')">⚙️ Admin</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, query, where, orderBy, deleteDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDxUI4bJsQ2wVPz9SS8UkfIiFPxLC9YMmY",
+  authDomain: "bus-externo-ucr.firebaseapp.com",
+  projectId: "bus-externo-ucr",
+  storageBucket: "bus-externo-ucr.firebasestorage.app",
+  messagingSenderId: "295955223912",
+  appId: "1:295955223912:web:e02626d38a8cb57cfd32dd"
+};
+// CAMBIÁ SOLO ESTE HASH SI QUERÉS OTRA CLAVE DEL PANEL ADMIN.
+// Para generar uno nuevo, abrí la consola y corré: window.generateAdminHash("tu_clave")
+const ADMIN_PASSWORD = "UCR.2026.BUS@";
+const ADMIN_SECURITY_NOTE = "Protección básica en cliente. Para seguridad real, cerrá Firestore con Auth y reglas.";
+
+// ── COORDENADAS HARDCODEADAS (nunca van a Firebase) ─────────────────────────
+const STOP_COORDS = [
+  { lat: 9.9361, lng: -84.0511 }, // Edificio de Generales UCR
+  { lat: 9.9372, lng: -84.0501 }, // Super Tacho / BomBom
+  { lat: 9.9388, lng: -84.0489 }, // Facultad de Agro. UCR
+  { lat: 9.9401, lng: -84.0479 }, // Facultad de Letras UCR
+  { lat: 9.9415, lng: -84.0468 }, // Radio U
+  { lat: 9.9458, lng: -84.0441 }, // El Lagar
+  { lat: 9.9499, lng: -84.0418 }, // Escuela San Blas
+  { lat: 9.9538, lng: -84.0396 }, // Mall Don Pancho
+  { lat: 9.9571, lng: -84.0375 }, // Entrada Barrio Los Ángeles
+  { lat: 9.9601, lng: -84.0356 }, // Bar Biever
+  { lat: 9.9628, lng: -84.0339 }, // Iglesia San Antonio
+  { lat: 9.9651, lng: -84.0323 }, // Lubricentro San Antonio
+  { lat: 9.9673, lng: -84.0308 }, // Ciclo F.B
+  { lat: 9.9694, lng: -84.0293 }, // Frente a La Casona
+  { lat: 9.9715, lng: -84.0278 }, // Antiguo Perrico
+  { lat: 9.9735, lng: -84.0263 }, // Al lado de El Trapiche
+  { lat: 9.9754, lng: -84.0249 }, // Mil Sabores
+  { lat: 9.9771, lng: -84.0236 }, // Iglesia de Coronado
+];
+
+const DEFAULT_DATA = {
+  stops: [
+    { name: "Edificio de Generales UCR", offset: 0, lat: 9.9361, lng: -84.0511 },
+    { name: "Super Tacho / BomBom", offset: 3, lat: 9.9372, lng: -84.0501 },
+    { name: "Facultad de Agro. UCR", offset: 5, lat: 9.9388, lng: -84.0489 },
+    { name: "Facultad de Letras UCR", offset: 7, lat: 9.9401, lng: -84.0479 },
+    { name: "Radio U", offset: 9, lat: 9.9415, lng: -84.0468 },
+    { name: "El Lagar", offset: 13, lat: 9.9458, lng: -84.0441 },
+    { name: "Escuela San Blas", offset: 17, lat: 9.9499, lng: -84.0418 },
+    { name: "Mall Don Pancho", offset: 21, lat: 9.9538, lng: -84.0396 },
+    { name: "Entrada Barrio Los Ángeles", offset: 24, lat: 9.9571, lng: -84.0375 },
+    { name: "Bar Biever", offset: 27, lat: 9.9601, lng: -84.0356 },
+    { name: "Iglesia San Antonio", offset: 30, lat: 9.9628, lng: -84.0339 },
+    { name: "Lubricentro San Antonio", offset: 33, lat: 9.9651, lng: -84.0323 },
+    { name: "Ciclo F.B", offset: 36, lat: 9.9673, lng: -84.0308 },
+    { name: "Frente a La Casona", offset: 39, lat: 9.9694, lng: -84.0293 },
+    { name: "Antiguo Perrico", offset: 42, lat: 9.9715, lng: -84.0278 },
+    { name: "Al lado de El Trapiche", offset: 45, lat: 9.9735, lng: -84.0263 },
+    { name: "Mil Sabores", offset: 48, lat: 9.9754, lng: -84.0249 },
+    { name: "Iglesia de Coronado", offset: 52, lat: 9.9771, lng: -84.0236 },  ],
+  times: {
+    "UCR-Coronado": ["08:00","09:10","10:10","13:10","15:10","16:10","17:10","18:10","19:10","21:30"],
+    "Coronado-UCR": ["06:00","06:15","07:10","08:20","09:20","12:20","14:20","15:20","16:05","17:05","18:05"]
+  },
+  waGroups: []
+};
+
+const NOTIF_ICONS = { warning:'⚠️', alert:'🚨', info:'ℹ️' };
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+let appData        = null;
+let reports        = [];
+let notifications  = [];   // active notifications from Firestore
+let currentDirection = 'UCR-Coronado';
+let nearestStopIdx = -1;
+let dismissedNotifs = new Set(JSON.parse(sessionStorage.getItem('dismissed')||'[]'));
+
+// ── utils ───────────────────────────────────────────────────────────────────
+const CR_TZ = 'America/Costa_Rica';
+const nowMin   = () => { const n=new Date(); return n.getHours()*60+n.getMinutes(); };
+const toMin    = t  => { const [h,m]=String(t).split(':').map(Number); return h*60+m; };
+const fmtCD    = d  => d<=0?'Saliendo ahora':d<60?`En ${d} min`:`En ${Math.floor(d/60)}h${d%60>0?' '+d%60+'min':''}`;
+const todayKey = () => new Intl.DateTimeFormat('en-CA',{timeZone:CR_TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const dirLabel = d  => d==='UCR-Coronado'?'UCR → Coronado':'Coronado → UCR';
+const normText = v => String(v||'').replace(/\s+/g,' ').trim();
+const clamp = (n,min,max) => Math.min(Math.max(n,min),max);
+let adminEggUnlocked = sessionStorage.getItem('adminEggUnlocked') === 'true';
+let logoTapCount = 0;
+let logoTapTimer = null;
+function setAdminEntryVisible(visible){
+  document.querySelectorAll('[data-admin-entry]').forEach(el => { el.style.display = visible ? '' : 'none'; });
+}
+function unlockAdminEgg(showMsg = true){
+  adminEggUnlocked = true;
+  sessionStorage.setItem('adminEggUnlocked','true');
+  setAdminEntryVisible(true);
+  if(showMsg) showAlert('🔓 Admin desbloqueado', 'info');
+}
+function localDateTimeInputValue(dateObj){
+  const pad=n=>String(n).padStart(2,'0');
+  return `${dateObj.getFullYear()}-${pad(dateObj.getMonth()+1)}-${pad(dateObj.getDate())}T${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}`;
+}
+async function sha256(text){
+  const data=new TextEncoder().encode(text);
+  const hash=await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+window.generateAdminHash = async function(plainPassword){
+  const clean = String(plainPassword ?? '').trim();
+  if(!clean){
+    console.warn('Escribí una clave, por ejemplo: window.generateAdminHash("ucr2026")');
+    return '';
+  }
+  const hash = await sha256(clean);
+  console.log('Clave:', clean);
+  console.log('Hash SHA-256:', hash);
+  return hash;
+};
+function haversineKm(la1,lo1,la2,lo2) {
+  const R=6371,dL=(la2-la1)*Math.PI/180,dG=(lo2-lo1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dG/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function migrateStopsWithCoords(rawStops=[]) {
+  return rawStops.map((stop,i)=>({
+    ...stop,
+    lat: typeof stop.lat==='number' ? stop.lat : (STOP_COORDS[i]?.lat ?? null),
+    lng: typeof stop.lng==='number' ? stop.lng : (STOP_COORDS[i]?.lng ?? null)
+  }));
+}
+function getStopsForDirection(dir){
+  const baseStops=(appData?.stops||[]).map((s,i)=>({ ...s, baseIdx:i }));
+  if(dir==='UCR-Coronado') return baseStops;
+  const totalOffset = baseStops.at(-1)?.offset || 0;
+  return [...baseStops].reverse().map(s=>({ ...s, offset: totalOffset - (s.offset||0) }));
+}
+function getDirectionalIndexFromBase(dir, baseIdx){
+  return getStopsForDirection(dir).findIndex(s=>s.baseIdx===baseIdx);
+}
+function sortAndUniqueTimes(times=[]){
+  return [...new Set(times.filter(Boolean))].sort((a,b)=>toMin(a)-toMin(b));
+}
+function validateAppData(data){
+  const errors=[];
+  const names=new Set();
+  let prevOffset=-1;
+  (data.stops||[]).forEach((s,idx)=>{
+    s.name = normText(s.name);
+    if(!s.name) errors.push(`La parada ${idx+1} no tiene nombre`);
+    const key=s.name.toLowerCase();
+    if(names.has(key)) errors.push(`La parada "${s.name}" está repetida`);
+    names.add(key);
+    if(!Number.isFinite(Number(s.offset)) || Number(s.offset)<0) errors.push(`La parada "${s.name}" tiene un offset inválido`);
+    s.offset = Number(s.offset);
+    if(s.offset < prevOffset) errors.push(`Los offsets deben ir en orden ascendente. Revisá "${s.name}"`);
+    prevOffset = s.offset;
+    if((s.lat!==null && s.lat!==undefined && s.lat!=='') || (s.lng!==null && s.lng!==undefined && s.lng!=='')){
+      if(!Number.isFinite(Number(s.lat)) || !Number.isFinite(Number(s.lng))) errors.push(`La parada "${s.name}" tiene coordenadas inválidas`);
+      else { s.lat=Number(s.lat); s.lng=Number(s.lng); }
+    } else {
+      s.lat=null; s.lng=null;
+    }
+  });
+  ['UCR-Coronado','Coronado-UCR'].forEach(dir=>{ data.times[dir]=sortAndUniqueTimes(data.times[dir]||[]); });
+  data.waGroups=(data.waGroups||[]).map(x=>({name:normText(x.name),desc:normText(x.desc),link:normText(x.link)}));
+  data.waGroups.forEach((g,idx)=>{
+    if(!g.name) errors.push(`El grupo #${idx+1} no tiene nombre`);
+    if(!/^https:\/\/(chat\.whatsapp\.com|wa\.me)\//i.test(g.link)) errors.push(`El link del grupo "${g.name||('#'+(idx+1))}" no parece válido de WhatsApp`);
+  });
+  return errors;
+}
+
+// ── BUS POSITION LOGIC ──────────────────────────────────────────────────────
+function getNextBus(dir) {
+  if (!appData) return null;
+  const times=[...(appData.times[dir]||[])].sort();
+  const now=nowMin();
+  for (const t of times) { const m=toMin(t); if(m>=now) return {time:t,diff:m-now}; }
+  return null;
+}
+function getPrevBus(dir) {
+  if (!appData) return null;
+  const times=[...(appData.times[dir]||[])].sort();
+  const now=nowMin(); let prev=null;
+  for (const t of times) { if(toMin(t)<now) prev=t; else break; }
+  return prev;
+}
+function getReportsForPrev(dir) {
+  const prev=getPrevBus(dir); if(!prev) return [];
+  return reports.filter(r=>r.direction===dir&&r.departure===prev);
+}
+function getLatestReportForPrev(dir) {
+  const dirStops=getStopsForDirection(dir);
+  const dirReports=getReportsForPrev(dir)
+    .map(r=>({ ...r, dirIdx: dirStops.findIndex(s=>s.baseIdx===r.stopIdx) }))
+    .filter(r=>r.dirIdx>=0);
+  if(!dirReports.length) return null;
+  return dirReports.reduce((best,cur)=>cur.dirIdx>best.dirIdx?cur:best,dirReports[0]);
+}
+
+/**
+ * Calculates estimated bus position index for the PREVIOUS bus in the selected direction.
+ * Returns { stopIdx, isReal } where stopIdx is directional, not base.
+ */
+function getBusEstimatedPosition(dir) {
+  const prev=getPrevBus(dir); if(!prev) return null;
+  const stops=getStopsForDirection(dir); if(!stops.length) return null;
+  const rep=getLatestReportForPrev(dir);
+  const nowM=nowMin();
+  const depM=toMin(prev);
+  const elapsedSinceDep=Math.max(0, nowM-depM);
+
+  if (rep) {
+    const anchorOffset = stops[rep.dirIdx]?.offset ?? 0;
+    const reportTimeM  = Number.isFinite(rep.reportedAtMin) ? rep.reportedAtMin : depM + anchorOffset;
+    const elapsedSinceReport = Math.max(0, nowM - reportTimeM);
+    let bestIdx = rep.dirIdx;
+    for (let i=rep.dirIdx+1; i<stops.length; i++) {
+      const addedTime = (stops[i].offset||0) - anchorOffset;
+      if (elapsedSinceReport >= addedTime) bestIdx=i;
+      else break;
+    }
+    return { stopIdx: clamp(bestIdx,0,stops.length-1), isReal: rep.dirIdx===bestIdx };
+  }
+
+  let bestIdx=0;
+  for (let i=0; i<stops.length; i++) {
+    if (elapsedSinceDep >= (stops[i].offset||0)) bestIdx=i;
+    else break;
+  }
+  return { stopIdx: clamp(bestIdx,0,stops.length-1), isReal: false };
+}
+
+// ── NOTIFICATIONS ───────────────────────────────────────────────────────────
+function subscribeNotifications() {
+  const now = Date.now();
+  // Listen to active (non-expired) notifications
+  const q = query(collection(db,'notifications'), where('expiresAt','>',now), orderBy('expiresAt','asc'));
+  onSnapshot(q, snap => {
+    notifications = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderNotifBanner();
+    renderNotifAdmin();
+  });
+}
+
+function renderNotifBanner() {
+  const banner=document.getElementById('notif-banner');
+  // Find first non-dismissed active notification
+  const active = notifications.find(n => !dismissedNotifs.has(n.id) && n.expiresAt > Date.now());
+  if (!active) { banner.classList.remove('visible'); return; }
+
+  const typeIcons = { warning:'⚠️', alert:'🚨', info:'ℹ️' };
+  document.getElementById('notif-icon').textContent  = typeIcons[active.type]||'📢';
+  document.getElementById('notif-title').textContent = active.title;
+  document.getElementById('notif-msg').textContent   = active.message;
+  const expDate = new Date(active.expiresAt);
+  document.getElementById('notif-exp').textContent   = `Expira: ${expDate.toLocaleDateString('es-CR',{weekday:'short',month:'short',day:'numeric'})} ${expDate.toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'})}`;
+  banner.className = `notif-banner visible type-${active.type||'warning'}`;
+  banner._currentId = active.id;
+}
+
+window.dismissNotif = function() {
+  const banner=document.getElementById('notif-banner');
+  if (banner._currentId) {
+    dismissedNotifs.add(banner._currentId);
+    sessionStorage.setItem('dismissed', JSON.stringify([...dismissedNotifs]));
+  }
+  // Try to show next notification if any
+  renderNotifBanner();
+};
+
+// ── GPS ─────────────────────────────────────────────────────────────────────
+window.requestGPS = function() {
+  const btn=document.getElementById('gps-btn'),title=document.getElementById('gps-title'),sub=document.getElementById('gps-sub');
+  btn.textContent='Buscando...'; btn.style.opacity='.6';
+  if (!navigator.geolocation) { title.textContent='GPS no disponible'; btn.textContent='No disponible'; return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const {latitude:lat,longitude:lng}=pos.coords;
+    const coords=(appData?.stops||[])
+      .map((s,i)=>({baseIdx:i,lat:s.lat,lng:s.lng,name:s.name}))
+      .filter(s=>Number.isFinite(s.lat)&&Number.isFinite(s.lng));
+    if(!coords.length){
+      title.textContent='Faltan coordenadas de paradas';
+      sub.textContent='Agregalas desde Admin para usar GPS';
+      btn.textContent='Sin datos'; btn.style.opacity='1';
+      return;
+    }
+    let minDist=Infinity,nearestBaseIdx=coords[0].baseIdx,stopName=coords[0].name;
+    coords.forEach((c)=>{ const d=haversineKm(lat,lng,c.lat,c.lng); if(d<minDist){minDist=d;nearestBaseIdx=c.baseIdx;stopName=c.name;} });
+    nearestStopIdx=nearestBaseIdx;
+    const distM=Math.round(minDist*1000);
+    document.getElementById('nearest-name').textContent=stopName;
+    document.getElementById('nearest-dist').textContent=distM<1000?`A ${distM} metros de vos`:`A ${minDist.toFixed(1)} km de vos`;
+    document.getElementById('nearest-card').classList.add('visible');
+    title.textContent=`Parada más cercana: ${stopName}`;
+    sub.textContent=distM<1000?`A ${distM}m · toca para actualizar`:`A ${minDist.toFixed(1)}km · toca para actualizar`;
+    btn.textContent='Actualizar'; btn.style.opacity='1';
+    updateStops();
+  }, err => {
+    title.textContent='No se pudo obtener tu ubicación';
+    sub.textContent=err.code===1?'Permiso denegado — activalo en tu navegador':'Intentá de nuevo';
+    btn.textContent='Reintentar'; btn.style.opacity='1';
+  }, {enableHighAccuracy:true,timeout:10000});
+};
+
+// ── FIREBASE ─────────────────────────────────────────────────────────────────
+async function loadConfig() {
+  try {
+    const snap=await getDoc(doc(db,'config','schedule'));
+    appData=snap.exists()?snap.data():JSON.parse(JSON.stringify(DEFAULT_DATA));
+    appData.stops = migrateStopsWithCoords(appData.stops || DEFAULT_DATA.stops);
+    if(!snap.exists()) await setDoc(doc(db,'config','schedule'),appData);
+    if(!appData.waGroups) appData.waGroups=[];
+  } catch(e) {
+    appData=JSON.parse(JSON.stringify(DEFAULT_DATA));
+    appData.stops = migrateStopsWithCoords(appData.stops || []);
+    showAlert('Sin conexión — usando datos de ejemplo','info');
+  }
+  refreshHome(); renderSchedules(); renderWaGroups();
+}
+
+function subscribeReports() {
+  try {
+    const q=query(collection(db,'reports'),where('date','==',todayKey()));
+    onSnapshot(q,snap=>{
+      reports=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.reportedAt||0)-(a.reportedAt||0)).map(data=>({
+        ...data,
+        reportedAtMin: Number.isFinite(data.reportedAtMin)
+          ? data.reportedAtMin
+          : (Number.isFinite(data.reportedAt) ? new Date(data.reportedAt).getHours()*60 + new Date(data.reportedAt).getMinutes() : null)
+      }));
+      refreshHome(); renderReportHistory();
+    });
+  } catch(e){console.warn(e);}
+}
+
+// ── HOME ─────────────────────────────────────────────────────────────────────
+function refreshHome() {
+  if(!appData) return;
+  updateBusProgress(); updateNextBus(); updateStops();
+}
+
+function updateBusProgress() {
+  const card=document.getElementById('bus-progress-card');
+  const prev=getPrevBus(currentDirection);
+  if(!prev){
+    card.innerHTML='';
+    card.classList.remove('visible');
+    return;
+  }
+
+  const stops=getStopsForDirection(currentDirection);
+  const pos=getBusEstimatedPosition(currentDirection);
+  if(!pos || !stops.length){
+    card.innerHTML='';
+    card.classList.remove('visible');
+    return;
+  }
+
+  const currentStop=stops[pos.stopIdx] || null;
+  const nextStop=stops[pos.stopIdx + 1] || null;
+  const currentOffset=Number(currentStop?.offset || 0);
+  const nextOffset=Number(nextStop?.offset || currentOffset);
+  const routeEndOffset=Number(stops.at(-1)?.offset || 0);
+
+  let progressOffset=currentOffset;
+  if(nextStop){
+    const rep=getLatestReportForPrev(currentDirection);
+    const depM=toMin(prev);
+    const reportMinute=(rep && Number.isFinite(rep.reportedAtMin)) ? rep.reportedAtMin : depM + currentOffset;
+    const elapsedFromAnchor=Math.max(0, nowMin() - reportMinute);
+    const segmentDuration=Math.max(1, nextOffset - currentOffset);
+    const segmentFraction=clamp(elapsedFromAnchor / segmentDuration, 0, 1);
+    progressOffset=currentOffset + (segmentDuration * segmentFraction);
+  }
+
+  const progressPercent=routeEndOffset > 0 ? clamp((progressOffset / routeEndOffset) * 100, 0, 100) : 0;
+  const badgeClass=pos.isReal ? 'real' : 'estimated';
+  const badgeText=pos.isReal ? 'Reportado' : 'Estimado';
+
+  card.innerHTML=`
+    <div class="bus-progress-head">
+      <div class="bus-progress-title">🚌 Seguimiento bus que salió a las ${prev}</div>
+      <div class="bus-progress-badge ${badgeClass}">${badgeText}</div>
+    </div>
+    <div class="bus-progress-sub">Última parada aprox.: <strong>${currentStop?.name || '—'}</strong></div>
+    <div class="bus-progress-sub">Siguiente parada: <strong>${nextStop?.name || 'Final de ruta'}</strong></div>
+    <div class="bus-progress-track-wrap">
+      <div class="bus-progress-labels">
+        <div><strong>${currentStop?.name || '—'}</strong></div>
+        <div class="right"><strong>${nextStop?.name || 'Final de ruta'}</strong></div>
+      </div>
+      <div class="bus-progress-track">
+        <div class="bus-progress-fill" style="width:${progressPercent}%;"></div>
+        <div class="bus-progress-dot" style="left:${progressPercent}%;"></div>
+        <div class="bus-progress-end"></div>
+      </div>
+    </div>
+    <div class="bus-progress-footer">${pos.isReal ? '📍 Basado en un reporte reciente de usuarios' : '⚠️ Ubicación aproximada basada en tiempos y reportes de usuarios'}</div>
+  `;
+  card.classList.add('visible');
+}
+
+function updateNextBus() {
+  const next=getNextBus(currentDirection);
+  const el=document.getElementById('next-bus-content');
+  if(!next){el.innerHTML=`<div class="no-bus">No hay más salidas hoy 🌙</div>`;return;}
+  el.innerHTML=`<div class="next-time">${next.time}</div>
+    <div class="next-info">${next.diff===0?'Saliendo ahora':'Próxima salida en '+next.diff+' min'}</div>
+    <div class="countdown">${fmtCD(next.diff)}</div>`;
+}
+
+function updateStops() {
+  const el=document.getElementById('stops-list');
+  const stops=getStopsForDirection(currentDirection);
+  if(!stops.length){el.innerHTML='';return;}
+
+  const pos=getBusEstimatedPosition(currentDirection);
+  el.innerHTML=stops.map((s,i)=>{
+    const isNearest=s.baseIdx===nearestStopIdx;
+    const busHere=pos && pos.stopIdx===i;
+    const busPassed=pos && pos.stopIdx>i;
+    let eta='';
+    if (pos && pos.stopIdx < i) {
+      const currentOffset=stops[pos.stopIdx]?.offset||0;
+      const diff=(s.offset||0)-currentOffset;
+      if (diff>=0) eta=diff===0?'Llegando':`~${diff} min`;
+    }
+
+    let circleClass='', circleContent=i+1, rowClass='', badge='';
+    if (busHere && pos.isReal) {
+      circleClass='bus-real'; circleContent='🚌';
+      badge=`<span class="stop-bus-badge-real">🚌 Aquí ahora (reportado)</span>`;
+      rowClass=' bus-here';
+    } else if (busHere) {
+      circleClass='bus-est'; circleContent='🚌';
+      badge=`<span class="stop-bus-badge-est">🚌 Aquí aprox. (estimado)</span>`;
+      rowClass=' bus-here';
+    } else if (busPassed) {
+      circleClass='passed'; circleContent='✓';
+    } else if (isNearest) {
+      circleClass='nearest'; circleContent='📍';
+    }
+    if (isNearest && !busHere) badge+=`<span class="stop-nearest-badge">Tu parada</span>`;
+    if (eta) badge+=`<span class="stop-eta">${eta}</span>`;
+
+    return `<div class="stop-row${rowClass}${isNearest&&!busHere?' nearest-highlight':''}">
+      <div class="stop-left">
+        <div class="stop-circle ${circleClass}">${circleContent}</div>
+        <div class="stop-info">
+          <div class="stop-name">${s.name}</div>
+          ${badge?`<div class="stop-tags">${badge}</div>`:''}
+        </div>
+      </div>
+      ${busPassed
+        ?`<div class="report-btn passed-lbl">Ya pasó</div>`
+        :`<button class="report-btn" onclick="window._report(${s.baseIdx})">Ya pasó aquí</button>`}
+    </div>`;
+  }).join('');
+}
+
+// ── REPORT ───────────────────────────────────────────────────────────────────
+window._report = async function(stopIdx) {
+  const prev=getPrevBus(currentDirection);
+  if(!prev){showAlert('Aún no ha salido ningún bus hoy en esta dirección','info');return;}
+  const baseStops=appData?.stops||[];
+  const stopName=baseStops[stopIdx]?.name || '';
+  if(!stopName){showAlert('Parada inválida','error');return;}
+
+  const cooldownKey=`reportCooldown:${currentDirection}:${prev}:${stopIdx}`;
+  const lastLocal=Number(localStorage.getItem(cooldownKey)||0);
+  if(Date.now()-lastLocal < 90000){
+    showAlert('Esperá un poco antes de volver a reportar esta misma parada','info');
+    return;
+  }
+  const repeated = reports.some(r => r.direction===currentDirection && r.departure===prev && r.stopIdx===stopIdx && Math.abs((r.reportedAt||0)-Date.now()) < 120000);
+  if(repeated){
+    showAlert('Ya existe un reporte reciente para esta parada y este bus','info');
+    return;
+  }
+
+  const userName=normText((prompt('¿Tu nombre o apodo? (podés dejarlo vacío)')||'').slice(0,30)) || 'Anónimo';
+  try {
+    await addDoc(collection(db,'reports'),{
+      stopIdx, stopName,
+      direction:currentDirection, departure:prev,
+      userName, date:todayKey(), reportedAt:Date.now(),
+      reportedAtMin: nowMin(),
+      timestamp:new Date().toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'})
+    });
+    localStorage.setItem(cooldownKey,String(Date.now()));
+    showAlert(`✅ Bus de las ${prev} — pasó por ${stopName}`,'success');
+  } catch(e){showAlert('Error: '+e.message,'error');}
+};
+
+function renderReportHistory() {
+  const el=document.getElementById('report-history-list');
+  if(!reports.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:4px 0;">Sin reportes hoy 👆</div>';return;}
+  el.innerHTML=reports.slice(0,8).map(r=>`
+    <div class="report-item">
+      <div><div class="ri-stop">${r.stopName}</div><div class="ri-sub">${dirLabel(r.direction)} · Bus ${r.departure} · ${r.userName}</div></div>
+      <div class="ri-sub" style="white-space:nowrap;">${r.timestamp}</div>
+    </div>`).join('');
+}
+
+// ── SCHEDULES ────────────────────────────────────────────────────────────────
+function renderSchedules() {
+  if(!appData) return;
+  const now=nowMin();
+  [['UCR-Coronado','sched-list-ucr'],['Coronado-UCR','sched-list-cor']].forEach(([dir,id])=>{
+    const el=document.getElementById(id);
+    const times=[...(appData.times[dir]||[])].sort();
+    if(!times.length){el.innerHTML='<div style="padding:10px 13px;color:var(--muted);font-size:13px;">Sin horarios</div>';return;}
+    const ni=times.findIndex(t=>toMin(t)>=now);
+    el.innerHTML=times.map((t,i)=>{
+      const past=toMin(t)<now,isNext=i===ni;
+      const badge=isNext?'<span class="sched-badge badge-next">Próximo</span>':past?'<span class="sched-badge badge-past">Pasado</span>':'';
+      return `<div class="sched-entry${past?' past':''}${isNext?' next-dep':''}"><span class="sched-time">${t}</span>${badge}</div>`;
+    }).join('');
+  });
+}
+
+// ── WA ────────────────────────────────────────────────────────────────────────
+function renderWaGroups() {
+  const el=document.getElementById('wa-list');
+  const g=appData?.waGroups||[];
+  if(!g.length){el.innerHTML=`<div class="wa-card"><div class="wa-empty">Aún no hay grupos.<br>El admin puede agregarlos ⚙️</div></div>`;return;}
+  el.innerHTML=`<div class="wa-card">${g.map(x=>`
+    <div class="wa-item">
+      <div class="wa-left"><div class="wa-icon">💬</div>
+        <div><div class="wa-name">${x.name}</div>${x.desc?`<div class="wa-desc">${x.desc}</div>`:''}</div>
+      </div>
+      <a class="wa-join" href="${x.link}" target="_blank" rel="noopener">Unirse</a>
+    </div>`).join('')}</div>`;
+}
+
+// ── DIRECTION ────────────────────────────────────────────────────────────────
+window.setDirection = function(dir) {
+  currentDirection=dir;
+  document.getElementById('btn-ucr').classList.toggle('active',dir==='UCR-Coronado');
+  document.getElementById('btn-cor').classList.toggle('active',dir==='Coronado-UCR');
+  refreshHome();
+};
+
+// ── VIEWS ────────────────────────────────────────────────────────────────────
+window.showView = function(name) {
+  if(name==='admin' && !adminEggUnlocked) return;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  const map={home:'inicio',horarios:'horario',grupos:'grupos',admin:'admin'};
+  document.querySelectorAll('.tab-btn').forEach(b=>{if(b.textContent.toLowerCase().includes(map[name]))b.classList.add('active');});
+  if(name==='horarios') renderSchedules();
+  if(name==='grupos')   renderWaGroups();
+};
+
+// ── ADMIN AUTH ────────────────────────────────────────────────────────────────
+window.checkPass = function() {
+  const input = document.getElementById('admin-pass').value;
+  if (input === ADMIN_PASSWORD) {
+    document.getElementById('admin-lock').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    renderAdminContent();
+    const endOfDay = new Date();
+    endOfDay.setHours(23,59,0,0);
+    document.getElementById('new-notif-exp').value = localDateTimeInputValue(endOfDay);
+    document.getElementById('pass-error').innerHTML = `<div class="alert alert-info" style="margin-top:8px;">${ADMIN_SECURITY_NOTE}</div>`;
+  } else {
+    document.getElementById('pass-error').innerHTML = '<div class="alert alert-error" style="margin-top:8px;">Contraseña incorrecta</div>';
+  }
+};
+window.lockAdmin = function() {
+  document.getElementById('admin-lock').style.display='block';
+  document.getElementById('admin-panel').style.display='none';
+  document.getElementById('admin-pass').value='';
+  document.getElementById('pass-error').innerHTML='';
+};
+
+// ── ADMIN RENDER ──────────────────────────────────────────────────────────────
+function renderAdminContent() {
+  if(!appData) return;
+  document.getElementById('stops-admin-list').innerHTML=(appData.stops||[]).map((s,i)=>`
+    <div class="stop-admin-row">
+      <div class="stop-admin-num">${i+1}</div>
+      <div class="stop-admin-name">${s.name}</div>
+      <div class="stop-time-offset">+${s.offset}min${Number.isFinite(s.lat)&&Number.isFinite(s.lng)?` · GPS`:``}</div>
+      <button class="btn-danger" onclick="window._rmStop(${i})">✕</button>
+    </div>`).join('')||'<div style="color:var(--muted);font-size:13px;padding:6px 0;">Sin paradas</div>';
+  renderChips('UCR-Coronado','times-ucr');
+  renderChips('Coronado-UCR','times-cor');
+  renderWaAdmin();
+  renderNotifAdmin();
+}
+function renderChips(dir,id) {
+  const el=document.getElementById(id);
+  const times=[...(appData.times[dir]||[])].sort();
+  el.innerHTML=times.length?times.map(t=>`<div class="time-chip">${t}<button onclick="window._rmTime('${dir}','${t}')">✕</button></div>`).join('')
+    :'<div style="color:var(--muted);font-size:12px;padding:4px 0;">Sin horarios</div>';
+}
+function renderWaAdmin() {
+  const el=document.getElementById('wa-admin-list');
+  const g=appData.waGroups||[];
+  el.innerHTML=g.length?g.map((x,i)=>`
+    <div class="wa-admin-row">
+      <div style="flex:1;min-width:0;"><div class="wa-admin-name">${x.name}</div><div class="wa-admin-link">${x.link}</div></div>
+      <button class="btn-danger" onclick="window._rmWa(${i})">✕</button>
+    </div>`).join(''):'<div style="color:var(--muted);font-size:13px;padding:6px 0;">Sin grupos</div>';
+}
+function renderNotifAdmin() {
+  const el=document.getElementById('notif-admin-list');
+  if(!notifications.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:6px 0;">Sin notificaciones activas</div>';return;}
+  el.innerHTML=notifications.map(n=>{
+    const exp=new Date(n.expiresAt);
+    const expStr=`${exp.toLocaleDateString('es-CR',{month:'short',day:'numeric'})} ${exp.toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'})}`;
+    return `<div class="notif-admin-row">
+      <div class="notif-admin-body">
+        <div class="notif-admin-title">${NOTIF_ICONS[n.type]||'📢'} ${n.title}</div>
+        <div class="notif-admin-meta">${n.message} · expira ${expStr}</div>
+      </div>
+      <button class="btn-danger" onclick="window._rmNotif('${n.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ── ADMIN ACTIONS ─────────────────────────────────────────────────────────────
+window._rmStop  = i=>{ appData.stops.splice(i,1); renderAdminContent(); };
+window._rmTime  = (dir,t)=>{ appData.times[dir]=appData.times[dir].filter(x=>x!==t); renderAdminContent(); };
+window._rmWa    = i=>{ appData.waGroups.splice(i,1); renderAdminContent(); };
+window._rmNotif = async id=>{
+  try { await deleteDoc(doc(db,'notifications',id)); }
+  catch(e){ showAdminAlert('Error: '+e.message,'error'); }
+};
+
+window.addStop = function() {
+  const name=normText(document.getElementById('new-stop-name').value).slice(0,60);
+  const offset=Number(document.getElementById('new-stop-offset').value);
+  const latRaw=normText(document.getElementById('new-stop-lat').value);
+  const lngRaw=normText(document.getElementById('new-stop-lng').value);
+  if(!name){ showAdminAlert('Escribí un nombre de parada','error'); return; }
+  if(!Number.isFinite(offset) || offset < 0){ showAdminAlert('El offset debe ser un número mayor o igual a 0','error'); return; }
+  if((latRaw && !Number.isFinite(Number(latRaw))) || (lngRaw && !Number.isFinite(Number(lngRaw)))){ showAdminAlert('Latitud o longitud inválidas','error'); return; }
+  if(appData.stops.some(s=>s.name.toLowerCase()===name.toLowerCase())){ showAdminAlert('Ya existe una parada con ese nombre','error'); return; }
+  appData.stops.push({name,offset,lat:latRaw?Number(latRaw):null,lng:lngRaw?Number(lngRaw):null});
+  appData.stops.sort((a,b)=>(a.offset||0)-(b.offset||0));
+  document.getElementById('new-stop-name').value='';
+  document.getElementById('new-stop-offset').value='';
+  document.getElementById('new-stop-lat').value='';
+  document.getElementById('new-stop-lng').value='';
+  renderAdminContent();
+};
+window.addTime = function(dir) {
+  const id=dir==='UCR-Coronado'?'new-time-ucr':'new-time-cor';
+  const val=document.getElementById(id).value;
+  if(!val) return;
+  if(!appData.times[dir]) appData.times[dir]=[];
+  if(!appData.times[dir].includes(val)) appData.times[dir].push(val);
+  document.getElementById(id).value=''; renderAdminContent();
+};
+window.addWaGroup = function() {
+  const name=document.getElementById('new-wa-name').value.trim();
+  const desc=document.getElementById('new-wa-desc').value.trim();
+  const link=document.getElementById('new-wa-link').value.trim();
+  if(!name||!link){showAdminAlert('Nombre y link son requeridos','error');return;}
+  if(!link.startsWith('http')){showAdminAlert('El link debe comenzar con https://','error');return;}
+  if(!appData.waGroups) appData.waGroups=[];
+  appData.waGroups.push({name,desc,link});
+  document.getElementById('new-wa-name').value='';
+  document.getElementById('new-wa-desc').value='';
+  document.getElementById('new-wa-link').value='';
+  renderAdminContent();
+};
+
+window.addNotif = async function() {
+  const title=document.getElementById('new-notif-title').value.trim();
+  const message=document.getElementById('new-notif-msg').value.trim();
+  const type=document.getElementById('new-notif-type').value;
+  const expVal=document.getElementById('new-notif-exp').value;
+  if(!title||!message){showAdminAlert('Título y mensaje son requeridos','error');return;}
+  if(!expVal){showAdminAlert('Especificá una fecha de expiración','error');return;}
+  const expiresAt=new Date(expVal).getTime();
+  if(expiresAt<=Date.now()){showAdminAlert('La fecha de expiración debe ser en el futuro','error');return;}
+  try {
+    await addDoc(collection(db,'notifications'),{
+      title, message, type, expiresAt,
+      createdAt: Date.now(),
+      createdAtStr: new Date().toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'})
+    });
+    document.getElementById('new-notif-title').value='';
+    document.getElementById('new-notif-msg').value='';
+    showAdminAlert('✅ Notificación publicada — todos los usuarios la verán','success');
+  } catch(e){ showAdminAlert('Error: '+e.message,'error'); }
+};
+
+window.saveAdmin = async function() {
+  try {
+    const cloned = JSON.parse(JSON.stringify(appData));
+    const errors = validateAppData(cloned);
+    if(errors.length){ showAdminAlert(errors[0],'error'); return; }
+    appData = cloned;
+    await setDoc(doc(db,'config','schedule'),appData);
+    showAdminAlert('✅ Guardado — todos los usuarios ven los cambios','success');
+    refreshHome(); renderSchedules(); renderWaGroups();
+  } catch(e){ showAdminAlert('Error: '+e.message,'error'); }
+};
+window.clearReports = async function() {
+  try {
+    const q=query(collection(db,'reports'),where('date','==',todayKey()));
+    const snap=await getDocs(q);
+    await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));
+    showAdminAlert('🗑️ Reportes del día eliminados','info');
+  } catch(e){ showAdminAlert('Error: '+e.message,'error'); }
+};
+
+function showAdminAlert(msg,type) {
+  const el=document.getElementById('admin-alert');
+  el.innerHTML=`<div class="alert alert-${type}">${msg}</div>`;
+  setTimeout(()=>el.innerHTML='',5000);
+}
+function showAlert(msg,type) {
+  const el=document.getElementById('alert-area');
+  el.innerHTML=`<div class="alert alert-${type}">${msg}</div>`;
+  setTimeout(()=>el.innerHTML='',4000);
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now=new Date();
+  document.getElementById('big-clock').textContent=now.toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('live-time').textContent=now.toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'});
+  const d=now.toLocaleDateString('es-CR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('clock-date').textContent=d.charAt(0).toUpperCase()+d.slice(1);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+updateClock();
+setInterval(updateClock, 1000);
+// Refresh home every minute (bus position moves)
+setInterval(()=>{ refreshHome(); renderSchedules(); }, 60000);
+// Check expired notifications every 2 minutes
+setInterval(()=>{ renderNotifBanner(); }, 120000);
+
+setAdminEntryVisible(adminEggUnlocked);
+const logoEgg = document.getElementById('logo-easter-egg');
+if (logoEgg) {
+  logoEgg.addEventListener('click', () => {
+    logoTapCount += 1;
+    clearTimeout(logoTapTimer);
+    if (logoTapCount >= 5) {
+      logoTapCount = 0;
+      unlockAdminEgg(true);
+      showView('admin');
+      return;
+    }
+    logoTapTimer = setTimeout(() => { logoTapCount = 0; }, 1800);
+  });
+}
+
+loadConfig();
+subscribeReports();
+subscribeNotifications();
+</script>
+
+<footer style="
+  text-align:center;
+  padding: 10px 0;
+  font-size: 10px;
+  color: var(--muted);
+  opacity: 0.7;
+">
+  © <span id="year"></span> · 
+  <a href="https://github.com/Desmond16170" target="_blank" style="
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  " onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+    Desmond
+  </a>
+</footer>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>
