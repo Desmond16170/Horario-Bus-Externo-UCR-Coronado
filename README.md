@@ -5,7 +5,7 @@ Web app estática para seguimiento comunitario de buses entre la UCR y Coronado.
 ---
 
 ## 📁 Estructura del proyecto
-.
+
 ├── index.html
 ├── css/
 │ └── styles.css
@@ -44,3 +44,24 @@ Solo necesitas subir los archivos del proyecto.
 ## 🔥 Firebase
 
 La configuración de Firebase se encuentra en:
+
+
+---
+
+## ⚠️ Nota importante
+
+Esta versión **NO cuenta con seguridad en el panel de administración**.
+
+- Cualquier usuario que acceda al panel admin  
+- Y tenga permisos de escritura en Firestore  
+
+👉 Puede realizar cambios en la base de datos  
+
+---
+
+## 👨‍💻 Autor
+
+**Desmond**
+
+GitHub:  
+https://github.com/Desmond16170
