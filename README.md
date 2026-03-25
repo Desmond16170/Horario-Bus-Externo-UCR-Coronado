@@ -5,8 +5,6 @@ Web app estática para seguimiento comunitario de buses entre la UCR y Coronado.
 ---
 
 ## 📁 Estructura del proyecto
-
-```bash
 .
 ├── index.html
 ├── css/
