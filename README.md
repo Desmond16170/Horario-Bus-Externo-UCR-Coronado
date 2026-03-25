@@ -2,6 +2,8 @@
 
 Web app estática para seguimiento comunitario de buses entre la UCR y Coronado.
 
+https://bus-ucr-coronado.netlify.app/
+
 ---
 
 ## 📁 Estructura del proyecto
