@@ -2,7 +2,7 @@
 
 Web app estática para seguimiento comunitario de buses entre la UCR y Coronado.
 
-## 📁 Paginas 
+## 🔍 Paginas 
 - https://bus-ucr-coronado.netlify.app/ (Ruta Coronado)
 - https://bus-ucr-sanramon-.netlify.app/ (Ruta San Ramon)
 - https://bus-ucr-tibas.netlify.app/ (Ruta Tibas)
